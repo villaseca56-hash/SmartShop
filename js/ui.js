@@ -54,23 +54,31 @@ UI.renderMetrics = function(totalExpense, budget) {
     const totalExpenseEl = document.getElementById('totalExpense');
     const estimatedSavingEl = document.getElementById('estimatedSaving');
     const finalPayEl = document.getElementById('finalPay');
-    
+    const budgetDisplayEl = document.getElementById('budgetDisplay');
+    const balanceEl = document.getElementById('balanceAmount');
+    const savingTargetEl = document.getElementById('savingTargetAmount');
+
+    const savingTarget = budget * 0.10;
+    const balance = budget - totalExpense;
+
     totalExpenseEl.textContent = Utils.formatCurrency(totalExpense);
-    
-    const estimatedSaving = budget * 0.10;
-    estimatedSavingEl.textContent = Utils.formatCurrency(estimatedSaving);
-    
-    const finalPay = budget - totalExpense;
-    finalPayEl.textContent = Utils.formatCurrency(finalPay);
+    estimatedSavingEl.textContent = Utils.formatCurrency(savingTarget);
+    finalPayEl.textContent = Utils.formatCurrency(balance);
+
+    if (budgetDisplayEl) budgetDisplayEl.textContent = Utils.formatCurrency(budget);
+    if (balanceEl) balanceEl.textContent = Utils.formatCurrency(balance);
+    if (savingTargetEl) savingTargetEl.textContent = Utils.formatCurrency(savingTarget);
 };
 
-UI.renderComparisonTable = function(currentData, products) {
+UI.renderComparisonTable = function(currentData, products, onSelect) {
     const resultsDiv = document.getElementById('comparisonResults');
     resultsDiv.innerHTML = '';
-    
+
     const markets = Object.keys(currentData);
     if (markets.length === 0) return;
-    
+
+    const cheapestInfo = DataStorage.getCheapestForEachProduct();
+
     let tableHTML = `
         <table class="table-res">
             <thead>
@@ -79,49 +87,89 @@ UI.renderComparisonTable = function(currentData, products) {
                     <th>Categoría</th>
                     <th>Cantidad</th>
     `;
-    
+
     markets.forEach(market => {
         tableHTML += `<th>${market}</th>`;
     });
-    
+
+    tableHTML += `<th>Seleccionar</th>`;
+
     tableHTML += `
                 </tr>
             </thead>
             <tbody>
     `;
-    
+
     currentData[markets[0]].items.forEach(item => {
         const product = products.find(p => p.id === item.productId);
         if (!product) return;
-        
+
+        const cheapest = cheapestInfo.find(c => c.product.id === item.productId);
+        const cheapestMarket = cheapest ? cheapest.cheapest.market : null;
+        const cheapestPrice = cheapest ? cheapest.cheapest.totalPrice : Infinity;
+
         tableHTML += `
             <tr>
                 <td>${Utils.sanitize(product.name)}</td>
                 <td>${product.category}</td>
                 <td>${product.quantity}</td>
         `;
-        
+
         markets.forEach(market => {
             const marketItem = currentData[market].items.find(mi => mi.productId === item.productId);
-            const unitPrice = marketItem ? marketItem.unitPrice : 0;
             const totalPrice = marketItem ? marketItem.totalPrice : 0;
-            
-            const isBestPrice = isBestPriceInCategory(item.productId, product.category, currentData);
-            
+            const isCheapest = market === cheapestMarket;
+
             tableHTML += `
-                <td class="${isBestPrice ? 'best-price' : ''}">${Utils.formatCurrency(totalPrice)}</td>
+                <td class="${isCheapest ? 'cheapest-price' : ''}">
+                    ${Utils.formatCurrency(totalPrice)}
+                    ${isCheapest ? '<span class="cheapest-badge">✓ Mejor</span>' : ''}
+                </td>
             `;
         });
-        
-        tableHTML += '</tr>';
+
+        const selectedMarket = DataStorage.getSelectedMarket(item.productId);
+        tableHTML += `
+                <td class="select-cell">
+        `;
+
+        markets.forEach(market => {
+            const marketItem = currentData[market].items.find(mi => mi.productId === item.productId);
+            if (!marketItem) return;
+            const isSelected = selectedMarket === market;
+            tableHTML += `
+                <button class="btn-select ${isSelected ? 'selected' : ''}"
+                        data-product-id="${item.productId}"
+                        data-market="${market}"
+                        data-unit-price="${marketItem.unitPrice}"
+                        data-total-price="${marketItem.totalPrice}"
+                        title="${isSelected ? 'Seleccionado en ' + market : 'Seleccionar en ' + market}">
+                    ${isSelected ? '✓' : market.substring(0, 3)}
+                </button>
+            `;
+        });
+
+        tableHTML += `</td></tr>`;
     });
-    
+
     tableHTML += `
             </tbody>
         </table>
     `;
-    
+
     resultsDiv.innerHTML = tableHTML;
+
+    if (onSelect) {
+        resultsDiv.querySelectorAll('.btn-select').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const productId = btn.dataset.productId;
+                const market = btn.dataset.market;
+                const unitPrice = parseFloat(btn.dataset.unitPrice);
+                const totalPrice = parseFloat(btn.dataset.totalPrice);
+                onSelect(productId, market, unitPrice, totalPrice);
+            });
+        });
+    }
 };
 
 UI.renderChart = function(currentData) {
@@ -296,6 +344,161 @@ UI.renderMonthlyRecordsUI = function(records) {
     });
 };
 
+UI.renderLocationSearch = function(onLocationSelected) {
+    if (document.querySelector('.location-search-panel')) return;
+
+    const mapPanel = document.querySelector('.panel-map');
+    if (!mapPanel) return;
+
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'location-search-panel';
+    searchContainer.innerHTML = `
+        <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center;">
+            <input type="text" id="locationSearchInput" placeholder="Ej: Santiago Centro, Las Condes, Providencia..."
+                   style="flex: 1; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-family: inherit;">
+            <button id="btnSearchLocation" class="btn btn-secondary" style="width: auto; padding: 0.75rem 1.5rem; flex-shrink: 0;">Buscar</button>
+            <button id="btnUseMyLocation" class="btn" style="width: auto; padding: 0.75rem 1.5rem; flex-shrink: 0; background: #eee;">
+                📍 Mi Ubicación
+            </button>
+        </div>
+        <div id="locationStatus" style="font-size: 0.85rem; color: var(--text-muted);"></div>
+    `;
+
+    mapPanel.insertBefore(searchContainer, mapPanel.querySelector('#map'));
+
+    document.getElementById('btnSearchLocation').addEventListener('click', async () => {
+        const input = document.getElementById('locationSearchInput');
+        const status = document.getElementById('locationStatus');
+        const query = input.value.trim();
+        if (!query) return;
+        status.textContent = 'Buscando ubicación...';
+        if (typeof GoogleMapsAPI !== 'undefined' && GoogleMapsAPI.loaded) {
+            try {
+                const result = await GoogleMapsAPI.geocode(query);
+                status.textContent = `📍 ${result.formattedAddress}`;
+                if (onLocationSelected) onLocationSelected(result);
+            } catch (e) {
+                status.textContent = 'Error al buscar dirección. Usando localización por defecto.';
+                console.warn('Geocode error:', e);
+            }
+        } else {
+            status.textContent = 'API de Google Maps no disponible. Usando datos locales.';
+        }
+    });
+
+    document.getElementById('btnUseMyLocation').addEventListener('click', () => {
+        const status = document.getElementById('locationStatus');
+        if (!navigator.geolocation) {
+            status.textContent = 'Geolocalización no soportada.';
+            return;
+        }
+        status.textContent = 'Obteniendo ubicación...';
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                status.textContent = '📍 Usando tu ubicación actual';
+                if (onLocationSelected) onLocationSelected(loc);
+            },
+            () => {
+                status.textContent = 'Permiso denegado. Usando ubicación por defecto.';
+            },
+            { enableHighAccuracy: true, timeout: 5000 }
+        );
+    });
+};
+
+UI.renderMarketOrganization = function() {
+    const container = document.getElementById('marketOrganization');
+    if (!container) return;
+
+    const marketLists = DataStorage.getMarketLists();
+    const markets = Object.keys(marketLists);
+
+    container.innerHTML = '';
+
+    if (markets.length === 0) {
+        container.innerHTML = '<p class="text-muted">Selecciona productos en la tabla de comparación para organizarlos por supermercado.</p>';
+        return;
+    }
+
+    markets.forEach(market => {
+        const items = marketLists[market];
+        const subtotal = items.reduce((sum, i) => sum + i.totalPrice, 0);
+
+        const card = document.createElement('div');
+        card.className = 'market-card';
+        card.innerHTML = `
+            <div class="market-card-header">
+                <h4>${market}</h4>
+                <span class="market-total">Total: ${Utils.formatCurrency(subtotal)}</span>
+            </div>
+            <ul class="market-items">
+                ${items.map(item => {
+                    const product = DataStorage.state.products.find(p => p.id === item.productId);
+                    return product ? `
+                        <li class="market-item">
+                            <span class="market-item-name">${Utils.sanitize(product.name)}</span>
+                            <span class="market-item-qty">x${product.quantity}</span>
+                            <span class="market-item-price">${Utils.formatCurrency(item.totalPrice)}</span>
+                        </li>
+                    ` : '';
+                }).join('')}
+            </ul>
+        `;
+        container.appendChild(card);
+    });
+
+    const grandTotal = Object.values(marketLists).flat().reduce((sum, i) => sum + i.totalPrice, 0);
+    const grandTotalEl = document.createElement('div');
+    grandTotalEl.className = 'market-grand-total';
+    grandTotalEl.innerHTML = `
+        <strong>Total General:</strong> ${Utils.formatCurrency(grandTotal)}
+        <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 1rem;">
+            (${markets.length} supermercados)
+        </span>
+    `;
+    container.appendChild(grandTotalEl);
+};
+
+UI.renderBalanceSummary = function() {
+    const container = document.getElementById('balanceSummary');
+    if (!container) return;
+
+    const budget = DataStorage.state.budget;
+    const selectedSubtotal = DataStorage.getSelectedSubtotal();
+    const remaining = budget - selectedSubtotal;
+    const savingTarget = budget * 0.10;
+    const savingAchieved = selectedSubtotal > 0 ? Math.max(0, budget * 0.10) : 0;
+
+    container.innerHTML = `
+        <div class="balance-grid">
+            <div class="balance-item highlight-blue">
+                <span class="balance-label">Presupuesto Mensual</span>
+                <span class="balance-value" id="budgetDisplay">${Utils.formatCurrency(budget)}</span>
+            </div>
+            <div class="balance-item">
+                <span class="balance-label">Gasto en Productos</span>
+                <span class="balance-value">${Utils.formatCurrency(selectedSubtotal)}</span>
+            </div>
+            <div class="balance-item highlight-green">
+                <span class="balance-label">Saldo Restante</span>
+                <span class="balance-value ${remaining < 0 ? 'text-danger' : ''}" id="balanceAmount">
+                    ${Utils.formatCurrency(remaining)}
+                </span>
+            </div>
+            <div class="balance-item">
+                <span class="balance-label">Meta de Ahorro (10%)</span>
+                <span class="balance-value highlight-green" id="savingTargetAmount">
+                    ${Utils.formatCurrency(savingTarget)}
+                </span>
+            </div>
+        </div>
+        ${remaining < 0 ? '<div class="alert-warning">⚠️ Has excedido tu presupuesto mensual.</div>' : ''}
+        ${budget > 0 && selectedSubtotal > 0 && remaining >= savingTarget ? '<div class="alert-success">✅ Estás dentro de tu presupuesto y puedes ahorrar el 10%.</div>' : ''}
+        ${budget > 0 && selectedSubtotal > 0 && remaining < savingTarget && remaining >= 0 ? '<div class="alert-info">💡 Tu saldo es positivo pero no alcanza la meta de ahorro del 10%.</div>' : ''}
+    `;
+};
+
 UI.renderSavingsRecommendations = function() {
     if (document.querySelector('.savings-recommendations')) return;
     
@@ -361,48 +564,99 @@ UI.renderMonthlyRecords = function() {
     dashboard.insertBefore(recordsContainer, document.querySelector('.chart-container'));
 };
 
-UI.initMap = function(userLocation, nearbyShops) {
-    // Si ya existe un mapa, lo removemos para evitar errores de rebote de inicialización
+UI.initMap = async function(userLocation, nearbyShops) {
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer) return;
+
     if (this.mapInstance) {
-        this.mapInstance.remove();
+        if (typeof L !== 'undefined' && this.mapInstance instanceof L.Map) {
+            this.mapInstance.remove();
+        }
+        this.mapInstance = null;
     }
-    
-    // Centrar mapa en la ubicación del usuario
+
+    mapContainer.innerHTML = '';
+
+    const useGoogleMaps = typeof GoogleMapsAPI !== 'undefined' && GoogleMapsAPI.loaded && GoogleMapsAPI.map;
+
+    if (useGoogleMaps) {
+        try {
+            GoogleMapsAPI.initMap('map', userLocation, 13);
+            GoogleMapsAPI.addCircle(userLocation, 7000);
+            GoogleMapsAPI.addMarker(userLocation, 'Tu Ubicación',
+                '<div style="font-family: sans-serif;"><strong>📍 Estás Aquí</strong></div>',
+                {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    fillColor: '#3b82f6',
+                    fillOpacity: 1,
+                    strokeColor: '#fff',
+                    strokeWeight: 2,
+                    scale: 10
+                }
+            );
+
+            nearbyShops.forEach(shop => {
+                const content = `
+                    <div style="font-family: 'Inter', sans-serif; line-height: 1.5;">
+                        <strong>🏪 ${shop.name}</strong><br>
+                        <span style="font-size: 0.85rem; color: #666;">${shop.address || ''}</span><br>
+                        <span style="display: inline-block; margin-top: 5px; font-weight: 600; color: #15803d;">
+                            🚗 ${shop.distance ? shop.distance.toFixed(2) : '?'} km
+                        </span>
+                    </div>
+                `;
+                GoogleMapsAPI.addMarker(
+                    { lat: shop.lat, lng: shop.lng },
+                    shop.name,
+                    content
+                );
+            });
+
+            this.mapInstance = GoogleMapsAPI.map;
+            return;
+        } catch (e) {
+            console.warn('Google Maps render failed, using Leaflet:', e);
+            mapContainer.innerHTML = '';
+        }
+    }
+
+    if (typeof L === 'undefined') {
+        mapContainer.innerHTML = '<p style="padding: 2rem; text-align: center; color: var(--text-muted);">Mapa no disponible. Configura una API key de Google Maps o verifica la conexión a internet.</p>';
+        return;
+    }
+
     this.mapInstance = L.map('map').setView([userLocation.lat, userLocation.lng], 13);
-    
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
     }).addTo(this.mapInstance);
-    
-    // 1. Marcador del Usuario Azul
+
     const userIcon = L.divIcon({
         className: 'user-location-marker',
         html: '<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.4);"></div>',
         iconSize: [16, 16]
     });
-    
+
     L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
         .addTo(this.mapInstance)
         .bindPopup('<b>📍 Estás Aquí</b>')
         .openPopup();
-    
-    // 2. Dibujar anillo de Geocerca de 7 KM
+
     L.circle([userLocation.lat, userLocation.lng], {
         color: '#3b82f6',
         fillColor: '#3b82f6',
         fillOpacity: 0.05,
-        radius: 7000 // Metros
+        radius: 7000
     }).addTo(this.mapInstance);
-    
-    // 3. Renderizar Locales Filtrados dentro del rango
+
     nearbyShops.forEach(shop => {
         L.marker([shop.lat, shop.lng])
             .addTo(this.mapInstance)
             .bindPopup(`
                 <div style="font-family: 'Inter', sans-serif;">
-                    <strong style="color: var(--text-main);">${shop.name}</strong><br>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">${shop.address}</span><br>
-                    <span style="display: inline-block; margin-top: 5px; font-weight: 600; color: var(--primary-dark);">🚗 A ${shop.distance} km de distancia</span>
+                    <strong>${shop.name}</strong><br>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">${shop.address || ''}</span><br>
+                    <span style="display: inline-block; margin-top: 5px; font-weight: 600; color: var(--primary-dark);">🚗 ${shop.distance ? shop.distance.toFixed(2) : '?'} km</span>
                 </div>
             `);
     });

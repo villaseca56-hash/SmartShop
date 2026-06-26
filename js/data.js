@@ -3,10 +3,12 @@ const DataStorage = {
         products: [],
         budget: 0,
         comparisons: {},
-        userLocation: { lat: -33.4372, lng: -70.6506 }, // Por defecto: Santiago Centro
+        userLocation: { lat: -33.4372, lng: -70.6506 },
         savingsRecommendations: [],
         nonEssentialSuggestions: [],
-        monthlyRecords: []
+        monthlyRecords: [],
+        selectedItems: [],
+        marketLists: {}
     },
 
     // Catálogo Maestro con Precios Reales Indexados (Mercado Chileno 2026)
@@ -50,11 +52,91 @@ const DataStorage = {
         return this.getNearbySupermarkets();
     },
 
+    getCheapestForEachProduct() {
+        const comparisons = this.state.comparisons;
+        const markets = Object.keys(comparisons);
+        if (markets.length === 0) return [];
+
+        return this.state.products.map(prod => {
+            const prices = markets.map(market => {
+                const item = comparisons[market].items.find(i => i.productId === prod.id);
+                return item ? { market, unitPrice: item.unitPrice, totalPrice: item.totalPrice } : null;
+            }).filter(Boolean);
+
+            if (prices.length === 0) return null;
+
+            prices.sort((a, b) => a.totalPrice - b.totalPrice);
+            return {
+                product: prod,
+                cheapest: prices[0],
+                allPrices: prices
+            };
+        }).filter(Boolean);
+    },
+
+    isProductSelected(productId) {
+        return this.state.selectedItems.some(item => item.productId === productId);
+    },
+
+    getSelectedMarket(productId) {
+        const item = this.state.selectedItems.find(i => i.productId === productId);
+        return item ? item.market : null;
+    },
+
+    selectProduct(productId, market, unitPrice, totalPrice) {
+        const existing = this.state.selectedItems.findIndex(i => i.productId === productId);
+        if (existing >= 0) {
+            this.state.selectedItems[existing] = { productId, market, unitPrice, totalPrice };
+        } else {
+            this.state.selectedItems.push({ productId, market, unitPrice, totalPrice });
+        }
+        this.rebuildMarketLists();
+        this.saveSelections();
+    },
+
+    unselectProduct(productId) {
+        this.state.selectedItems = this.state.selectedItems.filter(i => i.productId !== productId);
+        this.rebuildMarketLists();
+        this.saveSelections();
+    },
+
+    rebuildMarketLists() {
+        const lists = {};
+        this.state.selectedItems.forEach(item => {
+            if (!lists[item.market]) lists[item.market] = [];
+            lists[item.market].push(item);
+        });
+        this.state.marketLists = lists;
+    },
+
+    getMarketLists() {
+        return this.state.marketLists;
+    },
+
+    getSelectedSubtotal() {
+        let total = 0;
+        this.state.selectedItems.forEach(item => { total += item.totalPrice; });
+        return total;
+    },
+
+    saveSelections() {
+        localStorage.setItem('smartshop_selections', JSON.stringify(this.state.selectedItems));
+    },
+
+    loadSelections() {
+        const saved = localStorage.getItem('smartshop_selections');
+        if (saved) {
+            this.state.selectedItems = JSON.parse(saved);
+            this.rebuildMarketLists();
+        }
+    },
+
     loadState() {
         const savedProducts = localStorage.getItem('smartshop_products');
         const savedBudget = localStorage.getItem('smartshop_budget');
         this.state.products = savedProducts ? JSON.parse(savedProducts) : [];
         this.state.budget = savedBudget ? parseFloat(savedBudget) : 0;
+        this.loadSelections();
     },
 
     saveProducts(products) {

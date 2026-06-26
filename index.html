@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -21,10 +21,13 @@
     <main class="container main-grid">
         <section class="panel panel-form">
             <h2><span class="icon">🛒</span> Tu Lista</h2>
-            
+
             <div class="budget-box">
-                <label for="budgetInput">Presupuesto Disponible ($):</label>
+                <label for="budgetInput">Presupuesto del Mes ($):</label>
                 <input type="number" id="budgetInput" min="0" placeholder="Ej: 50000" value="0">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
+                    Ahorro recomendado: <strong>10%</strong> del presupuesto mensual
+                </div>
             </div>
 
             <form id="productForm" novalidate>
@@ -58,28 +61,29 @@
 
             <div class="products-list-container">
                 <h3>Productos Agregados</h3>
-                <ul id="productsList" class="products-list">
-                    </ul>
+                <ul id="productsList" class="products-list"></ul>
             </div>
         </section>
 
         <section class="panel panel-dashboard">
             <h2><span class="icon">📊</span> Dashboard Financiero</h2>
-            
+
             <div class="metrics-grid">
                 <div class="metric-card shadow-sm">
                     <h3>Gasto Total</h3>
                     <p class="metric-value" id="totalExpense">$0</p>
                 </div>
                 <div class="metric-card shadow-sm highlight-green">
-                    <h3>Ahorro Estimado</h3>
+                    <h3>Meta de Ahorro (10%)</h3>
                     <p class="metric-value" id="estimatedSaving">$0</p>
                 </div>
                 <div class="metric-card shadow-sm highlight-blue">
-                    <h3>Total a Pagar</h3>
+                    <h3>Saldo Restante</h3>
                     <p class="metric-value" id="finalPay">$0</p>
                 </div>
             </div>
+
+            <div id="balanceSummary" class="balance-summary"></div>
 
             <div class="action-bar">
                 <button id="btnCompare" class="btn btn-secondary">🔍 Buscar Mejores Precios</button>
@@ -88,9 +92,13 @@
             <div class="chart-container">
                 <canvas id="distributionChart"></canvas>
             </div>
-            
-            <div class="comparison-results" id="comparisonResults">
-                </div>
+
+            <div class="comparison-results" id="comparisonResults"></div>
+        </section>
+
+        <section class="panel panel-full">
+            <h2><span class="icon">🛍️</span> Organización por Supermercado</h2>
+            <div id="marketOrganization"></div>
         </section>
 
         <section class="panel panel-map">
@@ -103,12 +111,13 @@
         <p>&copy; 2026 SmartShop - Arquitectura Limpia en Vanilla JS.</p>
     </footer>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <script src="js/utils.js"></script>
     <script src="js/validation.js"></script>
     <script src="js/data.js"></script>
+    <script src="js/apis/googleMaps.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/main.js"></script>
 </body>
