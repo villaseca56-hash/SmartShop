@@ -1,6 +1,6 @@
 // ui.js - User Interface Module
 
-// Asegúrate de actualizar o fusionar estos métodos dentro del objeto UI existente en js/ui.js
+const UI = {};
 
 function isBestPriceInCategory(productId, category, comparisonData) {
     const markets = Object.keys(comparisonData);
