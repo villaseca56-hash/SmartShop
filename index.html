@@ -23,11 +23,8 @@
             <h2><span class="icon">🛒</span> Tu Lista</h2>
 
             <div class="budget-box">
-                <label for="budgetInput">Presupuesto del Mes ($):</label>
+                <label for="budgetInput">Presupuesto del Mes</label>
                 <input type="number" id="budgetInput" min="0" placeholder="Ej: 50000" value="0">
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
-                    Ahorro recomendado: <strong>10%</strong> del presupuesto mensual
-                </div>
             </div>
 
             <form id="productForm" novalidate>
@@ -68,18 +65,34 @@
         <section class="panel panel-dashboard">
             <h2><span class="icon">📊</span> Dashboard Financiero</h2>
 
-            <div class="metrics-grid">
-                <div class="metric-card shadow-sm">
-                    <h3>Gasto Total</h3>
-                    <p class="metric-value" id="totalExpense">$0</p>
+            <div class="metrics-grid" id="metricsGrid">
+                <div class="metric-card card-budget" id="cardPresupuesto">
+                    <div class="card-icon">💰</div>
+                    <div class="card-body">
+                        <span class="card-label">Presupuesto Mensual</span>
+                        <span class="card-value" id="budgetDisplay">$0</span>
+                    </div>
                 </div>
-                <div class="metric-card shadow-sm highlight-green">
-                    <h3>Meta de Ahorro (10%)</h3>
-                    <p class="metric-value" id="estimatedSaving">$0</p>
+                <div class="metric-card card-expense" id="cardGasto">
+                    <div class="card-icon">🛍️</div>
+                    <div class="card-body">
+                        <span class="card-label">Gasto Total</span>
+                        <span class="card-value" id="totalExpense">$0</span>
+                    </div>
                 </div>
-                <div class="metric-card shadow-sm highlight-blue">
-                    <h3>Saldo Restante</h3>
-                    <p class="metric-value" id="finalPay">$0</p>
+                <div class="metric-card card-balance" id="cardSaldo">
+                    <div class="card-icon">💵</div>
+                    <div class="card-body">
+                        <span class="card-label">Saldo Restante</span>
+                        <span class="card-value" id="finalPay">$0</span>
+                    </div>
+                </div>
+                <div class="metric-card card-savings" id="cardAhorro">
+                    <div class="card-icon">🎯</div>
+                    <div class="card-body">
+                        <span class="card-label">Meta Ahorro (10%)</span>
+                        <span class="card-value" id="estimatedSaving">$0</span>
+                    </div>
                 </div>
             </div>
 
@@ -108,7 +121,7 @@
     </main>
 
     <footer class="app-footer">
-        <p>&copy; 2026 SmartShop - Arquitectura Limpia en Vanilla JS.</p>
+        <p>&copy; 2026 SmartShop</p>
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

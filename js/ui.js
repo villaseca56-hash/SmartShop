@@ -68,6 +68,15 @@ UI.renderMetrics = function(totalExpense, budget) {
     if (budgetDisplayEl) budgetDisplayEl.textContent = Utils.formatCurrency(budget);
     if (balanceEl) balanceEl.textContent = Utils.formatCurrency(balance);
     if (savingTargetEl) savingTargetEl.textContent = Utils.formatCurrency(savingTarget);
+
+    const cardSaldo = document.getElementById('cardSaldo');
+    if (cardSaldo) {
+        if (balance < 0) {
+            cardSaldo.classList.add('negative');
+        } else {
+            cardSaldo.classList.remove('negative');
+        }
+    }
 };
 
 UI.renderComparisonTable = function(currentData, products, onSelect) {
@@ -174,48 +183,110 @@ UI.renderComparisonTable = function(currentData, products, onSelect) {
 
 UI.renderChart = function(currentData) {
     const ctx = document.getElementById('distributionChart').getContext('2d');
-    
+    if (!ctx) return;
+
     const markets = Object.keys(currentData);
-    const data = {
-        labels: markets,
-        datasets: [{
-            label: 'Gasto por Mercado',
-            data: markets.map(m => currentData[m].subtotal),
-            backgroundColor: [
-                'rgba(34, 197, 94, 0.7)',
-                'rgba(59, 130, 246, 0.7)',
-                'rgba(234, 179, 8, 0.7)',
-                'rgba(239, 68, 68, 0.7)'
-            ],
-            borderColor: [
-                'rgba(34, 197, 94, 1)',
-                'rgba(59, 130, 246, 1)',
-                'rgba(234, 179, 8, 1)',
-                'rgba(239, 68, 68, 1)'
-            ],
-            borderWidth: 1
-        }]
-    };
-    
+    const hasData = markets.some(m => currentData[m].subtotal > 0);
+
+    const barColors = [
+        { bg: 'rgba(34, 197, 94, 0.8)', border: '#22c55e', hoverBg: 'rgba(34, 197, 94, 1)' },
+        { bg: 'rgba(59, 130, 246, 0.8)', border: '#3b82f6', hoverBg: 'rgba(59, 130, 246, 1)' },
+        { bg: 'rgba(234, 179, 8, 0.8)', border: '#eab308', hoverBg: 'rgba(234, 179, 8, 1)' },
+        { bg: 'rgba(239, 68, 68, 0.8)', border: '#ef4444', hoverBg: 'rgba(239, 68, 68, 1)' }
+    ];
+
     if (window.chartInstance) {
         window.chartInstance.destroy();
     }
-    
+
+    const zoomPlugin = {
+        id: 'barZoom',
+        beforeDraw(chart) {
+            const ctx2 = chart.ctx;
+            chart.getDatasetMeta(0).data.forEach((bar, index) => {
+                if (bar.active) {
+                    ctx2.save();
+                    ctx2.shadowColor = 'rgba(0,0,0,0.15)';
+                    ctx2.shadowBlur = 12;
+                    ctx2.shadowOffsetY = 4;
+                    ctx2.restore();
+                }
+            });
+        }
+    };
+
     window.chartInstance = new Chart(ctx, {
         type: 'bar',
-        data: data,
+        data: {
+            labels: markets,
+            datasets: [{
+                label: 'Gasto por Mercado',
+                data: markets.map(m => currentData[m].subtotal),
+                backgroundColor: markets.map((_, i) => barColors[i % barColors.length].bg),
+                borderColor: markets.map((_, i) => barColors[i % barColors.length].border),
+                borderWidth: 1,
+                hoverBackgroundColor: markets.map((_, i) => barColors[i % barColors.length].hoverBg),
+                hoverBorderWidth: 2,
+                hoverBorderColor: markets.map((_, i) => barColors[i % barColors.length].border)
+            }]
+        },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
+            animation: {
+                duration: 600,
+                easing: 'easeOutQuart'
+            },
+            hover: {
+                mode: 'index',
+                intersect: false,
+                animationDuration: 200
+            },
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            },
             plugins: {
-                legend: { display: false }
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleFont: { weight: '600' },
+                    bodyFont: { size: 13 },
+                    padding: 10,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: (context) => {
+                            const market = context.label;
+                            const items = currentData[market]?.items || [];
+                            const productCount = items.length;
+                            return [
+                                `Total: ${Utils.formatCurrency(context.parsed.y)}`,
+                                `Productos: ${productCount}`
+                            ];
+                        }
+                    }
+                }
             },
             scales: {
                 y: {
                     beginAtZero: true,
-                    title: { display: true, text: 'Total Gastado ($)' }
+                    grid: { color: 'rgba(0,0,0,0.05)' },
+                    ticks: {
+                        callback: (value) => Utils.formatCurrency(value)
+                    },
+                    title: { display: true, text: 'Total Gastado ($)', color: '#64748b' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        font: { weight: '600' }
+                    }
                 }
+            },
+            layout: {
+                padding: { top: 10, bottom: 5 }
             }
-        }
+        },
+        plugins: hasData ? [zoomPlugin] : []
     });
 };
 
@@ -468,35 +539,11 @@ UI.renderBalanceSummary = function() {
     const selectedSubtotal = DataStorage.getSelectedSubtotal();
     const remaining = budget - selectedSubtotal;
     const savingTarget = budget * 0.10;
-    const savingAchieved = selectedSubtotal > 0 ? Math.max(0, budget * 0.10) : 0;
 
-    container.innerHTML = `
-        <div class="balance-grid">
-            <div class="balance-item highlight-blue">
-                <span class="balance-label">Presupuesto Mensual</span>
-                <span class="balance-value" id="budgetDisplay">${Utils.formatCurrency(budget)}</span>
-            </div>
-            <div class="balance-item">
-                <span class="balance-label">Gasto en Productos</span>
-                <span class="balance-value">${Utils.formatCurrency(selectedSubtotal)}</span>
-            </div>
-            <div class="balance-item highlight-green">
-                <span class="balance-label">Saldo Restante</span>
-                <span class="balance-value ${remaining < 0 ? 'text-danger' : ''}" id="balanceAmount">
-                    ${Utils.formatCurrency(remaining)}
-                </span>
-            </div>
-            <div class="balance-item">
-                <span class="balance-label">Meta de Ahorro (10%)</span>
-                <span class="balance-value highlight-green" id="savingTargetAmount">
-                    ${Utils.formatCurrency(savingTarget)}
-                </span>
-            </div>
-        </div>
-        ${remaining < 0 ? '<div class="alert-warning">⚠️ Has excedido tu presupuesto mensual.</div>' : ''}
-        ${budget > 0 && selectedSubtotal > 0 && remaining >= savingTarget ? '<div class="alert-success">✅ Estás dentro de tu presupuesto y puedes ahorrar el 10%.</div>' : ''}
-        ${budget > 0 && selectedSubtotal > 0 && remaining < savingTarget && remaining >= 0 ? '<div class="alert-info">💡 Tu saldo es positivo pero no alcanza la meta de ahorro del 10%.</div>' : ''}
-    `;
+    container.innerHTML =
+        (remaining < 0 ? '<div class="alert-warning">⚠️ Has excedido tu presupuesto mensual en ' + Utils.formatCurrency(Math.abs(remaining)) + '.</div>' : '') +
+        (budget > 0 && selectedSubtotal > 0 && remaining >= savingTarget ? '<div class="alert-success">✅ Estás dentro de tu presupuesto. Puedes ahorrar el 10% (' + Utils.formatCurrency(savingTarget) + ').</div>' : '') +
+        (budget > 0 && selectedSubtotal > 0 && remaining < savingTarget && remaining >= 0 ? '<div class="alert-info">💡 Tu saldo es positivo pero no alcanza la meta de ahorro del 10%.</div>' : '');
 };
 
 UI.renderSavingsRecommendations = function() {

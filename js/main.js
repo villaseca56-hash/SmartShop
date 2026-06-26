@@ -40,22 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             UI.renderChart(currentData);
-            UI.renderSavingsRecommendations();
-            UI.renderNonEssentialSuggestions();
-            UI.renderMonthlyRecords();
-            UI.updateSavingsMetrics();
             UI.renderMarketOrganization();
             UI.renderBalanceSummary();
-
-            if (DataStorage.state.budget > 0) {
-                const savingTarget = DataStorage.state.budget * 0.10;
-                const remaining = DataStorage.state.budget - DataStorage.getSelectedSubtotal();
-                const balanceEl = document.getElementById('balanceAmount');
-                if (balanceEl) {
-                    balanceEl.textContent = Utils.formatCurrency(remaining);
-                    balanceEl.className = 'balance-value' + (remaining < 0 ? ' text-danger' : '');
-                }
-            }
         };
 
         const loadGoogleMapsAndInit = async () => {
