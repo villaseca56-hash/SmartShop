@@ -101,11 +101,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('productForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const nameInput = document.getElementById('productName');
-            const categorySelect = document.getElementById('productCategory');
             const quantityInput = document.getElementById('productQuantity');
 
             const validationResult = Validation.validateProductForm(
-                nameInput.value, categorySelect.value, quantityInput.value
+                nameInput.value, quantityInput.value
             );
             if (!validationResult.isValid) {
                 UI.showErrors(validationResult.errors);
@@ -116,7 +115,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             DataStorage.addProduct({
                 id: Date.now().toString(36),
                 name: Utils.sanitize(nameInput.value.trim()),
-                category: categorySelect.value,
                 quantity: parseInt(quantityInput.value, 10)
             });
 

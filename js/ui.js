@@ -2,27 +2,18 @@
 
 const UI = {};
 
-function isBestPriceInCategory(productId, category, comparisonData) {
+function findCheapestMarket(productId, comparisonData) {
     const markets = Object.keys(comparisonData);
-    if (markets.length === 0) return false;
-    
-    const defaultMarket = markets[0];
-    const productItems = [];
-    
+    if (markets.length === 0) return null;
+
+    let cheapest = null;
     markets.forEach(market => {
         const item = comparisonData[market].items.find(i => i.productId === productId);
-        if (item) {
-            productItems.push({
-                market: market,
-                totalPrice: item.totalPrice
-            });
+        if (item && (!cheapest || item.totalPrice < cheapest.totalPrice)) {
+            cheapest = { market, totalPrice: item.totalPrice };
         }
     });
-    
-    if (productItems.length === 0) return false;
-    
-    productItems.sort((a, b) => a.totalPrice - b.totalPrice);
-    return productItems[0].market === defaultMarket;
+    return cheapest;
 }
 
 UI.renderProductsList = function(products, onDeleteCallback) {
@@ -35,7 +26,7 @@ UI.renderProductsList = function(products, onDeleteCallback) {
         li.innerHTML = `
             <div class="info">
                 <span class="title">${Utils.sanitize(product.name)}</span>
-                <span class="meta">${product.category} - Cantidad: ${product.quantity}</span>
+                <span class="meta">Cantidad: ${product.quantity}</span>
             </div>
             <button class="btn-delete" data-id="${product.id}" title="Eliminar">×</button>
         `;
@@ -93,7 +84,6 @@ UI.renderComparisonTable = function(currentData, products, onSelect) {
             <thead>
                 <tr>
                     <th>Producto</th>
-                    <th>Categoría</th>
                     <th>Cantidad</th>
     `;
 
@@ -115,12 +105,10 @@ UI.renderComparisonTable = function(currentData, products, onSelect) {
 
         const cheapest = cheapestInfo.find(c => c.product.id === item.productId);
         const cheapestMarket = cheapest ? cheapest.cheapest.market : null;
-        const cheapestPrice = cheapest ? cheapest.cheapest.totalPrice : Infinity;
 
         tableHTML += `
             <tr>
                 <td>${Utils.sanitize(product.name)}</td>
-                <td>${product.category}</td>
                 <td>${product.quantity}</td>
         `;
 
@@ -369,7 +357,7 @@ UI.renderNonEssentialSuggestionsUI = function(items) {
         li.innerHTML = `
             <div class="info">
                 <span class="title">${Utils.sanitize(product.name)}</span>
-                <span class="meta">${product.category} - Encontrado en ${bestMarket} por $${bestPrice}</span>
+                <span class="meta">Encontrado en ${bestMarket} por $${bestPrice}</span>
             </div>
             <div class="suggestion">
                 <span class="icon">💡</span>
