@@ -14,6 +14,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         let currentData = DataStorage.fetchPrices();
         let defaultMarket = Object.keys(currentData)[0] || 'Jumbo';
 
+        const mapStatus = document.getElementById('mapStatus');
+
+        const fetchSupermarkets = async (lat, lng) => {
+            if (mapStatus) mapStatus.textContent = 'Buscando supermercados cercanos...';
+            try {
+                const osmShops = await DataStorage.searchSupermarketsOSM(lat, lng, 7000);
+                const localShops = DataStorage.getNearbySupermarketsFromDB(lat, lng, 7000);
+                const seen = new Set();
+                const merged = [...osmShops, ...localShops].filter(shop => {
+                    const key = shop.name + shop.lat + shop.lng;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+                if (mapStatus) mapStatus.textContent = merged.length > 0
+                    ? `✓ ${merged.length} supermercados encontrados`
+                    : '✗ Sin supermercados cercanos';
+                return merged;
+            } catch (e) {
+                console.warn('Error fetching supermarkets:', e);
+                const local = DataStorage.getNearbySupermarketsFromDB(lat, lng, 7000);
+                if (mapStatus) mapStatus.textContent = `⚠ Usando datos locales (${local.length} tiendas)`;
+                return local;
+            }
+        };
+
         const refreshAppUI = () => {
             currentData = DataStorage.fetchPrices();
             defaultMarket = Object.keys(currentData)[0] || 'Jumbo';
@@ -44,25 +70,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             UI.renderBalanceSummary();
         };
 
-        const loadGoogleMapsAndInit = async () => {
-            try {
-                await GoogleMapsAPI.load();
-                console.log('Google Maps API loaded');
-            } catch (e) {
-                console.warn('Google Maps no disponible, usando Leaflet:', e.message);
-            }
-            await initMapWithLocation();
-        };
-
-        const initMapWithLocation = async () => {
-            try {
-                const shopsInRange = DataStorage.getNearbyStores();
-                await UI.initMap(DataStorage.state.userLocation, shopsInRange);
-            } catch (e) {
-                console.warn('Error al inicializar mapa:', e);
-            }
-        };
-
         const initGeolocalizacion = async () => {
             if (navigator.geolocation) {
                 try {
@@ -79,26 +86,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.warn('Geolocalización no soportada.');
             }
 
-            await DataStorage.initStoreData(DataStorage.state.userLocation);
-            const shopsInRange = DataStorage.getNearbyStores();
-
-            try {
-                await GoogleMapsAPI.load();
-            } catch (e) {
-                console.warn('Google Maps no disponible para mapa inicial:', e.message);
-            }
-
-            await UI.initMap(DataStorage.state.userLocation, shopsInRange);
+            const userLoc = DataStorage.state.userLocation;
+            const shops = await fetchSupermarkets(userLoc.lat, userLoc.lng);
+            await UI.initMap(userLoc, shops);
 
             UI.renderLocationSearch(async (location) => {
-                if (typeof location.lat !== 'undefined') {
-                    DataStorage.setUserLocation(location.lat, location.lng);
-                } else if (location.lat && location.lng) {
-                    DataStorage.setUserLocation(location.lat, location.lng);
-                }
-                await DataStorage.initStoreData(DataStorage.state.userLocation);
-                const nearby = DataStorage.getNearbyStores();
-                await UI.initMap(DataStorage.state.userLocation, nearby);
+                const loc = { lat: parseFloat(location.lat), lng: parseFloat(location.lng) };
+                DataStorage.setUserLocation(loc.lat, loc.lng);
+                const nearbyShops = await fetchSupermarkets(loc.lat, loc.lng);
+                await UI.initMap(loc, nearbyShops);
             });
         };
 
@@ -139,7 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         refreshAppUI();
-        loadGoogleMapsAndInit();
+        initGeolocalizacion();
 
         console.log('SmartShop iniciado correctamente');
     } catch (error) {
@@ -147,8 +143,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         DataStorage.loadState();
 
         try {
-            const shopsInRange = DataStorage.getNearbyStores();
-            await UI.initMap(DataStorage.state.userLocation, shopsInRange.length > 0 ? shopsInRange : []);
+            const shops = DataStorage.getNearbySupermarketsFromDB(
+                DataStorage.state.userLocation.lat,
+                DataStorage.state.userLocation.lng,
+                7000
+            );
+            await UI.initMap(DataStorage.state.userLocation, shops);
         } catch (e) {
             console.warn('Error en mapa de respaldo:', e);
         }

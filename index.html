@@ -12,9 +12,17 @@
 </head>
 <body>
     <header class="app-header">
-        <div class="container header-container">
-            <h1 class="logo">Smart<span>Shop</span></h1>
-            <p class="tagline">Ahorra tiempo y dinero en tus compras</p>
+        <div class="container">
+            <div class="header-content">
+                <div class="brand-group">
+                    <h1 class="logo">Smart<span>Shop</span></h1>
+                    <p class="tagline">Ahorra tiempo y dinero en tus compras</p>
+                </div>
+                <div class="logo-wrapper">
+                    <img src="css/SmartShop.png" alt="SmartShop" class="logo-img" id="mainLogo">
+                    <div class="logo-glow"></div>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -116,6 +124,9 @@
 
         <section class="panel panel-map">
             <h2><span class="icon">📍</span> Cobertura de Supermercados</h2>
+            <div id="mapStatus" class="map-status" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                Inicializando mapa...
+            </div>
             <div id="map"></div>
         </section>
     </main>

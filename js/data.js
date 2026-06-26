@@ -40,6 +40,89 @@ const DataStorage = {
         return Promise.resolve(this.catalog);
     },
 
+    async searchSupermarketsOSM(lat, lng, radius) {
+        const rad = radius || 7000;
+        const overpassUrl = 'https://overpass-api.de/api/interpreter';
+        const query = `[out:json][timeout:15];
+        (
+          node["shop"="supermarket"](around:${rad},${lat},${lng});
+          way["shop"="supermarket"](around:${rad},${lat},${lng});
+          node["shop"="grocery"](around:${rad},${lat},${lng});
+          way["shop"="grocery"](around:${rad},${lat},${lng});
+        );
+        out center;`;
+
+        try {
+            const response = await fetch(overpassUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'data=' + encodeURIComponent(query)
+            });
+            if (!response.ok) throw new Error('Overpass API error: ' + response.status);
+            const data = await response.json();
+
+            const shops = data.elements
+                .filter(el => el.tags && (el.tags.shop === 'supermarket' || el.tags.shop === 'grocery'))
+                .map(el => {
+                    const lat2 = el.lat || (el.center ? el.center.lat : null);
+                    const lng2 = el.lon || (el.center ? el.center.lon : null);
+                    if (!lat2 || !lng2) return null;
+                    const name = el.tags.name || el.tags.brand || 'Supermercado';
+                    const distance = this.getDistanceKm(lat, lng, lat2, lng2);
+                    return {
+                        name: name,
+                        brand: el.tags.brand || name.split(' ')[0],
+                        lat: lat2,
+                        lng: lng2,
+                        address: el.tags['addr:street']
+                            ? [el.tags['addr:street'], el.tags['addr:housenumber']].filter(Boolean).join(' ')
+                            : el.tags.display_name || '',
+                        distance: parseFloat(distance.toFixed(2)),
+                        osmId: el.id,
+                        source: 'osm'
+                    };
+                })
+                .filter(Boolean)
+                .sort((a, b) => a.distance - b.distance);
+
+            return shops;
+        } catch (e) {
+            console.warn('Error fetching OSM supermarkets:', e);
+            return this.getNearbySupermarketsFromDB(lat, lng, rad);
+        }
+    },
+
+    getNearbySupermarketsFromDB(lat, lng, radius) {
+        const MAX_RADIUS_KM = (radius || 7000) / 1000;
+        return this.supermarketsDatabase
+            .map(shop => {
+                const distance = this.getDistanceKm(lat, lng, shop.lat, shop.lng);
+                return { ...shop, distance: parseFloat(distance.toFixed(2)), source: 'local' };
+            })
+            .filter(shop => shop.distance <= MAX_RADIUS_KM)
+            .sort((a, b) => a.distance - b.distance);
+    },
+
+    async geocodeOSM(address) {
+        const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(address) + '&limit=1&countrycodes=CL';
+        try {
+            const response = await fetch(url, {
+                headers: { 'User-Agent': 'SmartShop/1.0' }
+            });
+            if (!response.ok) throw new Error('Nominatim error: ' + response.status);
+            const data = await response.json();
+            if (data.length === 0) throw new Error('No results found');
+            return {
+                lat: parseFloat(data[0].lat),
+                lng: parseFloat(data[0].lon),
+                formattedAddress: data[0].display_name
+            };
+        } catch (e) {
+            console.warn('Geocode error:', e);
+            throw e;
+        }
+    },
+
     setUserLocation(lat, lng) {
         this.state.userLocation = { lat, lng };
     },

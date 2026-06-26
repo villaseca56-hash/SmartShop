@@ -443,17 +443,13 @@ UI.renderLocationSearch = function(onLocationSelected) {
         const query = input.value.trim();
         if (!query) return;
         status.textContent = 'Buscando ubicación...';
-        if (typeof GoogleMapsAPI !== 'undefined' && GoogleMapsAPI.loaded) {
-            try {
-                const result = await GoogleMapsAPI.geocode(query);
-                status.textContent = `📍 ${result.formattedAddress}`;
-                if (onLocationSelected) onLocationSelected(result);
-            } catch (e) {
-                status.textContent = 'Error al buscar dirección. Usando localización por defecto.';
-                console.warn('Geocode error:', e);
-            }
-        } else {
-            status.textContent = 'API de Google Maps no disponible. Usando datos locales.';
+        try {
+            const result = await DataStorage.geocodeOSM(query);
+            status.textContent = `📍 ${result.formattedAddress}`;
+            if (onLocationSelected) onLocationSelected(result);
+        } catch (e) {
+            status.textContent = 'No se encontró la dirección. Intenta con otra.';
+            console.warn('Geocode error:', e);
         }
     });
 
