@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartShop - Comparador Inteligente</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="container header-container">
+            <h1 class="logo">Smart<span>Shop</span></h1>
+            <p class="tagline">Ahorra tiempo y dinero en tus compras</p>
+        </div>
+    </header>
+
+    <main class="container main-grid">
+        <section class="panel panel-form">
+            <h2><span class="icon">🛒</span> Tu Lista</h2>
+            
+            <div class="budget-box">
+                <label for="budgetInput">Presupuesto Disponible ($):</label>
+                <input type="number" id="budgetInput" min="0" placeholder="Ej: 50000" value="0">
+            </div>
+
+            <form id="productForm" novalidate>
+                <div class="form-group">
+                    <label for="productName">Nombre del Producto</label>
+                    <input type="text" id="productName" placeholder="Ej: Leche entera 1L" required>
+                    <span class="error-msg" id="error-productName"></span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="productCategory">Categoría</label>
+                        <select id="productCategory" required>
+                            <option value="" disabled selected>Selecciona...</option>
+                            <option value="Alimentación">Alimentación</option>
+                            <option value="Higiene">Higiene</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                        <span class="error-msg" id="error-productCategory"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="productQuantity">Cantidad</label>
+                        <input type="number" id="productQuantity" min="1" value="1" required>
+                        <span class="error-msg" id="error-productQuantity"></span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="btnAdd">Agregar Producto</button>
+            </form>
+
+            <div class="products-list-container">
+                <h3>Productos Agregados</h3>
+                <ul id="productsList" class="products-list">
+                    </ul>
+            </div>
+        </section>
+
+        <section class="panel panel-dashboard">
+            <h2><span class="icon">📊</span> Dashboard Financiero</h2>
+            
+            <div class="metrics-grid">
+                <div class="metric-card shadow-sm">
+                    <h3>Gasto Total</h3>
+                    <p class="metric-value" id="totalExpense">$0</p>
+                </div>
+                <div class="metric-card shadow-sm highlight-green">
+                    <h3>Ahorro Estimado</h3>
+                    <p class="metric-value" id="estimatedSaving">$0</p>
+                </div>
+                <div class="metric-card shadow-sm highlight-blue">
+                    <h3>Total a Pagar</h3>
+                    <p class="metric-value" id="finalPay">$0</p>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <button id="btnCompare" class="btn btn-secondary">🔍 Buscar Mejores Precios</button>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="distributionChart"></canvas>
+            </div>
+            
+            <div class="comparison-results" id="comparisonResults">
+                </div>
+        </section>
+
+        <section class="panel panel-map">
+            <h2><span class="icon">📍</span> Cobertura de Supermercados</h2>
+            <div id="map"></div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>&copy; 2026 SmartShop - Arquitectura Limpia en Vanilla JS.</p>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="js/utils.js"></script>
+    <script src="js/validation.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
