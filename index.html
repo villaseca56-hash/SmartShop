@@ -3,37 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartShop - Comparador Inteligente</title>
+    <title>SmartShop - Comparador Inteligente de Precios y Ahorro</title>
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="css/style.css">
+    <!-- Main Style sheet -->
+    <link rel="stylesheet" href="styles/style.css">
 </head>
 <body>
     <header class="app-header">
         <div class="container">
             <div class="logo-wrapper">
-                <img src="css/SmartShop.png" alt="SmartShop" class="logo-img" id="mainLogo">
+                <img src="assets/SmartShop.png" alt="SmartShop Logo" class="logo-img" id="mainLogo">
                 <div class="logo-glow"></div>
             </div>
-            <p class="tagline">Ahorra tiempo y dinero en tus compras</p>
+            <p class="tagline">Ahorra tiempo y dinero con tu Asistente Inteligente de Compras</p>
         </div>
     </header>
 
     <main class="container main-grid">
+        <!-- Panel de Lista y Entrada de Productos -->
         <section class="panel panel-form">
             <h2><span class="icon">🛒</span> Tu Lista</h2>
 
             <div class="budget-box">
-                <label for="budgetInput">Presupuesto del Mes</label>
-                <input type="number" id="budgetInput" min="0" placeholder="Ej: 50000" value="0">
+                <label for="budgetInput">Presupuesto Mensual</label>
+                <input type="number" id="budgetInput" min="0" placeholder="Ej: 150000" value="0">
             </div>
 
-            <form id="productForm" novalidate>
+            <form id="productForm" autocomplete="off" novalidate>
                 <div class="form-group">
                     <label for="productName">Nombre del Producto</label>
-                    <input type="text" id="productName" placeholder="Ej: Leche entera 1L" required>
+                    <input type="text" id="productName" placeholder="Busca leche, arroz, pollo, etc..." required>
                     <span class="error-msg" id="error-productName"></span>
                 </div>
 
@@ -43,88 +47,122 @@
                     <span class="error-msg" id="error-productQuantity"></span>
                 </div>
 
-                <button type="submit" class="btn btn-primary" id="btnAdd">Agregar Producto</button>
+                <button type="submit" class="btn btn-primary" id="btnAdd" style="width: 100%;">Agregar Producto</button>
             </form>
 
             <div class="products-list-container">
                 <h3>Productos Agregados</h3>
-                <ul id="productsList" class="products-list"></ul>
+                <ul id="productsList" class="products-list">
+                    <!-- Se rellena dinámicamente -->
+                </ul>
             </div>
         </section>
 
+        <!-- Panel del Dashboard Principal de Ahorro -->
         <section class="panel panel-dashboard">
-            <h2><span class="icon">📊</span> Dashboard Financiero</h2>
+            <div class="welcome-container">
+                <h3>Hola Freddy 👋</h3>
+                <p>Hemos encontrado excelentes oportunidades de ahorro en tu canasta para este mes.</p>
+            </div>
 
+            <!-- Tarjetas de Métricas -->
             <div class="metrics-grid" id="metricsGrid">
-                <div class="metric-card card-budget" id="cardPresupuesto">
-                    <div class="card-icon">💰</div>
-                    <div class="card-body">
-                        <span class="card-label">Presupuesto Mensual</span>
-                        <span class="card-value" id="budgetDisplay">$0</span>
-                    </div>
-                </div>
-                <div class="metric-card card-expense" id="cardGasto">
-                    <div class="card-icon">🛍️</div>
-                    <div class="card-body">
-                        <span class="card-label">Gasto Total</span>
-                        <span class="card-value" id="totalExpense">$0</span>
-                    </div>
-                </div>
-                <div class="metric-card card-balance" id="cardSaldo">
-                    <div class="card-icon">💵</div>
-                    <div class="card-body">
-                        <span class="card-label">Saldo Restante</span>
-                        <span class="card-value" id="finalPay">$0</span>
-                    </div>
-                </div>
-                <div class="metric-card card-savings" id="cardAhorro">
-                    <div class="card-icon">🎯</div>
-                    <div class="card-body">
-                        <span class="card-label">Meta Ahorro (10%)</span>
-                        <span class="card-value" id="estimatedSaving">$0</span>
-                    </div>
+                <!-- Se rellena con DashboardCards.js -->
+            </div>
+
+            <div id="balanceSummary" class="balance-summary">
+                <!-- Estado del presupuesto -->
+            </div>
+
+            <div class="action-bar" style="display: flex; gap: 1rem;">
+                <button id="btnCompare" class="btn btn-secondary" style="flex: 1;">🔍 Buscar Mejores Precios</button>
+            </div>
+
+            <!-- Gráfico de Comparación Histórica y Proyección -->
+            <div class="chart-container-wrapper" style="margin-top: 2rem;">
+                <h3>📈 Evolución e Historial de Ahorros</h3>
+                <div class="chart-container">
+                    <canvas id="distributionChart"></canvas>
                 </div>
             </div>
 
-            <div id="balanceSummary" class="balance-summary"></div>
-
-            <div class="action-bar">
-                <button id="btnCompare" class="btn btn-secondary">🔍 Buscar Mejores Precios</button>
+            <!-- Caja de Texto de Proyecciones -->
+            <div id="projectionPredictionText">
+                <!-- Proyecciones matemáticas de ahorro -->
             </div>
-
-            <div class="chart-container">
-                <canvas id="distributionChart"></canvas>
-            </div>
-
-            <div class="comparison-results" id="comparisonResults"></div>
         </section>
 
+        <!-- Tabla de Comparación Avanzada -->
+        <section class="panel panel-full">
+            <h2><span class="icon">🔍</span> Comparador de Precios Profesional</h2>
+            <div class="comparison-results" id="comparisonResults">
+                <!-- Se rellena con ComparisonTable.js -->
+            </div>
+        </section>
+
+        <!-- Sugerencias de Productos No Esenciales -->
+        <section class="panel panel-full">
+            <h2><span class="icon">⚠️</span> Sugerencias de Compra Inteligente</h2>
+            <div class="suggestions-list" id="nonEssentialList">
+                <!-- Sugerencias de productos no esenciales -->
+            </div>
+        </section>
+
+        <!-- Organización de Compra Desglosada -->
         <section class="panel panel-full">
             <h2><span class="icon">🛍️</span> Organización por Supermercado</h2>
-            <div id="marketOrganization"></div>
+            <div id="marketOrganization">
+                <!-- Listas desglosadas por supermercado -->
+            </div>
         </section>
 
+        <!-- Ubicación y Cobertura de Tiendas -->
         <section class="panel panel-map">
-            <h2><span class="icon">📍</span> Cobertura de Supermercados</h2>
-            <div id="mapStatus" class="map-status" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-                Inicializando mapa...
+            <h2><span class="icon">📍</span> Cobertura y Rutas de Ahorro</h2>
+            
+            <div class="location-search-panel">
+                <div style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="locationSearchInput" placeholder="Ej: Providencia, Santiago Centro, Alameda..." style="flex: 1; min-width: 200px;">
+                    <button id="btnSearchLocation" class="btn btn-secondary" style="padding: 0.85rem 1.25rem;">Buscar</button>
+                    <button id="btnUseMyLocation" class="btn" style="padding: 0.85rem 1.25rem; background: rgba(59, 130, 246, 0.15); color: #93c5fd;">📍 Mi Ubicación</button>
+                </div>
+                <div id="mapStatus" style="font-size: 0.85rem; color: var(--text-muted);">
+                    Localización GPS por defecto: Santiago Centro
+                </div>
             </div>
+
             <div id="map"></div>
         </section>
     </main>
 
     <footer class="app-footer">
-        <p>&copy; 2026 SmartShop</p>
+        <p>&copy; 2026 SmartShop - Asistente Financiero de Compras y Ahorro</p>
     </footer>
 
+    <!-- Leaflet Map Library -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <script src="js/utils.js"></script>
-    <script src="js/validation.js"></script>
-    <script src="js/data.js"></script>
-    <script src="js/apis/googleMaps.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/main.js"></script>
+    <!-- File protocol detection -->
+    <script>
+        if (location.protocol === 'file:') {
+            document.addEventListener('DOMContentLoaded', function() {
+                var banner = document.createElement('div');
+                banner.style.cssText = 'background:#dc2626;color:#fff;text-align:center;padding:1rem;font-family:Inter,sans-serif;font-size:0.9rem;';
+                banner.innerHTML = '<strong>⛔ Error de CORS:</strong> Esta app debe servirse con un servidor HTTP. Abre la terminal y ejecuta <code style="background:#450a0a;padding:2px 6px;border-radius:4px;">npx serve .</code> o <code style="background:#450a0a;padding:2px 6px;border-radius:4px;">python -m http.server</code>';
+                document.body.prepend(banner);
+                console.error('SmartShop: Los ES Modules no funcionan con file://. Usa un servidor HTTP.');
+            });
+        }
+    </script>
+
+    <!-- Main Module Orchestration Entry -->
+    <script type="module">
+        import { Dashboard } from './pages/dashboard.js';
+        document.addEventListener('DOMContentLoaded', () => {
+            Dashboard.init();
+        });
+    </script>
 </body>
 </html>
